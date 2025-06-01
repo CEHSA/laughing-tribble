@@ -95,4 +95,4 @@ To ensure the smooth operation and longevity of the Architex Axis application, c
 
 ---
 
-*This project structure was initialized and developed by an AI agent.*
+
