@@ -2,6 +2,26 @@
 
 This guide provides step-by-step instructions for deploying the Architex Axis application (Vue.js frontend and PHP backend) to a shared cPanel hosting environment.
 
+## Automated Deployment using cPanel Git Version Control & `.cpanel.yml`
+
+This project includes a `.cpanel.yml` file located in the root of the repository. This file is designed to automate deployment tasks when using cPanel's "Git Version Control" feature.
+
+**How it Works (General Overview):**
+1.  You connect your Git repository (e.g., from GitHub, GitLab) to cPanel's Git Version Control.
+2.  When you push changes to the specified branch in your repository, cPanel can automatically pull these changes.
+3.  If a `.cpanel.yml` file is present in the repository's root, cPanel executes the tasks defined within this file (e.g., copying files to your `public_html` directory, running scripts).
+
+**Crucial Setup for `.cpanel.yml`:**
+*   **Customization Required:** Before relying on `.cpanel.yml`, you **MUST** open the file and customize it:
+    *   Replace placeholder values like `your_cpanel_username` with your actual cPanel username.
+    *   Verify and adjust `REPOPATH` (the path where cPanel clones your repository, e.g., `/home/your_cpanel_username/repositories/architex_axis`).
+    *   Adjust `DEPLOYPATH`, `BACKEND_TARGET_PATH`, and `FRONTEND_TARGET_PATH` variables to match your specific cPanel directory structure and domain/subdomain setup.
+*   **cPanel Git Setup:** Ensure your cPanel's "Git Version Control" feature is correctly set up to clone your repository and is tracking the correct branch.
+*   **Pre-built Frontend:** The provided `.cpanel.yml` assumes that your Vue.js frontend application (the `frontend/dist/` directory) has been pre-built and these built assets are **committed to the repository**.
+*   **Review Comments:** Carefully read the comments within the `.cpanel.yml` file. They provide detailed explanations of each task and further customization advice, especially regarding the secure management of `backend/config/database.php`.
+
+Using the `.cpanel.yml` file can significantly streamline your deployment process. The manual steps outlined below are still useful for understanding the process or for environments where cPanel's Git automation is not used.
+
 ## I. Prerequisites
 
 Before you begin, ensure you have the following:
@@ -13,6 +33,8 @@ Before you begin, ensure you have the following:
 *   **Node.js/npm Access:** Installed on your local machine (or wherever you build the Vue.js application) to prepare the frontend assets.
 
 ## II. Backend Deployment (PHP API)
+
+*(This section describes the manual deployment process for the backend. If you are using the automated deployment with `.cpanel.yml` and cPanel's Git Version Control, many of these steps, especially file uploads, will be handled by the tasks in `.cpanel.yml` after cPanel pulls the repository.)*
 
 Follow these steps to deploy the PHP backend:
 
@@ -45,27 +67,22 @@ Follow these steps to deploy the PHP backend:
 
 ### 2. Upload Backend Files
 
-Choose one of the following methods:
+Choose one of the following methods if deploying manually. (If using `.cpanel.yml` automation, cPanel pulls the repo, and the `.cpanel.yml` script then handles copying files to the live location).
 
-*   **A. Using Git (if cPanel supports it or via SSH):**
+*   **A. Using Git (Manual Pull/Clone - if not using `.cpanel.yml` automation for file copying):**
     1.  Ensure all backend files (`backend/` directory contents) are committed to your Git repository.
-    2.  **cPanel Git Version Control:**
-        *   In cPanel, look for "Git™ Version Control" or similar.
-        *   Create a new repository or clone an existing one.
-        *   Enter your repository URL (e.g., from GitHub, GitLab).
-        *   Specify the deployment path. This is where the repository will be cloned on the server (e.g., `public_html/api_backend` or a specific subdomain's document root like `api.yourdomain.com`).
-        *   Deploy (checkout) the appropriate branch (e.g., `main` or `production`).
-    3.  **SSH Access:**
-        *   If you have SSH access, connect to your server.
-        *   Navigate to the desired deployment directory.
-        *   Clone your repository: `git clone your_repository_url .` (the `.` clones into the current directory).
-        *   Checkout the deployment branch: `git checkout main`.
+    2.  **cPanel Git Version Control (for pulling only):**
+        *   Set up cPanel to clone/pull your repository into a non-public directory (e.g., `/home/your_cpanel_username/repositories/architex_axis`).
+        *   After cPanel pulls, you would then manually copy files from this repository path to your public backend deployment path (e.g., `public_html/api_backend/`). This manual copy step is what `.cpanel.yml` automates.
+    3.  **SSH Access (for pulling only):**
+        *   Connect via SSH, navigate to your chosen repository path, and run `git pull`.
+        *   Then, manually copy files to the public backend deployment path.
 
-*   **B. Using FTP/File Manager:**
+*   **B. Using FTP/File Manager (Purely Manual):**
     1.  Connect to your server using an FTP client or open the cPanel File Manager.
     2.  Navigate to the desired directory on the server where you want to host the backend (e.g., `public_html/api_backend`, or a subdomain's document root).
     3.  Upload all files and folders from your local `backend/` directory.
-        *   **Important:** If you are not using Git on the server, consider excluding the `.git/` directory and any local development-specific files from your upload.
+        *   **Important:** Exclude development-specific files like `.git` (if not already ignored by your FTP client settings) and `db_setup.php` (as it should be run deliberately).
 
 ### 3. Configure Backend
 
@@ -137,34 +154,36 @@ If your backend is in a subdirectory (e.g., `public_html/api_backend/`) and you 
 
 ## III. Frontend Deployment (Vue.js Application)
 
+*(This section describes the manual deployment process for the frontend. If you are using the automated deployment with `.cpanel.yml`, file uploads from `frontend/dist/` are handled by tasks in that file.)*
+
 ### 1. Build Vue.js Application
 
 1.  **On your local machine:**
     *   Navigate to your `frontend/` directory.
-    *   **Crucial:** Update the API base URL.
-        *   If you are using an environment variable (e.g., `VUE_APP_API_BASE_URL` in `.env.production`):
-            Create/edit `frontend/.env.production` file:
+    *   **Crucial:** Update the API base URL for production.
+        *   If using an environment variable (e.g., `VUE_APP_API_BASE_URL` in `frontend/.env.production`):
+            Ensure `frontend/.env.production` exists and contains:
             ```
             VUE_APP_API_BASE_URL=https://yourdomain.com/api_backend
-            # Or whatever the live URL of your PHP backend is
+            # Replace with your actual live backend API URL
             ```
-        *   If hardcoded in `frontend/src/services/api.js`, change it directly:
-            ```javascript
-            const API_BASE_URL = 'https://yourdomain.com/api_backend';
-            ```
+        *   If hardcoded in `frontend/src/services/api.js` (not recommended for different environments), change it directly.
     *   Run the production build command:
         ```bash
         npm run build
         ```
-        This command will compile and minify your Vue.js application into static assets, typically placed in a `frontend/dist/` directory.
+        This command compiles and minifies your Vue.js application into static assets, typically placed in a `frontend/dist/` directory.
+    *   **Important for Git-based deployments (including `.cpanel.yml`):** After running `npm run build`, the generated `frontend/dist/` directory **must be committed to your Git repository**. The `.gitignore` file in `frontend/` has been configured to allow this. This ensures that your cPanel Git deployment (automated or manual pull) includes the built assets.
 
 ### 2. Upload Frontend Files
+
+(If deploying manually. If using `.cpanel.yml` automation, this step is handled by the script after cPanel pulls the repository which includes the `frontend/dist/` directory).
 
 1.  Using an FTP client or cPanel File Manager:
     *   Navigate to the directory on your server where you want to host the frontend. This is usually:
         *   `public_html/` for your main domain (e.g., `https://yourdomain.com`).
         *   A specific subdomain's document root (e.g., `subdomain.yourdomain.com/`).
-    *   Upload **the contents** of your local `frontend/dist/` directory (e.g., `index.html`, `css/`, `js/` subdirectories) to this server location.
+    *   Upload **the contents** of your local `frontend/dist/` directory (e.g., `index.html`, `assets/` or `css/` and `js/` subdirectories) to this server location.
 
 ### 3. Configure Web Server for SPA Routing (Apache via `.htaccess`)
 

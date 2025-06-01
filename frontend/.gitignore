@@ -86,7 +86,7 @@ out
 
 # Nuxt.js build outputs
 .nuxt
-dist
+# dist # Intentionally commented out to allow committing the 'dist' directory for cPanel deployment
 
 # Svelte build outputs
 .svelte-kit

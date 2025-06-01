@@ -48,6 +48,13 @@ To get the Architex Axis application running locally or for development:
 3.  **Set Up the Frontend:**
     *   Detailed instructions are in `frontend/README.md`. This involves installing Node.js dependencies (`npm install`) and running the Vue.js development server (`npm run serve`).
 
+## Deployment
+
+For deploying this application to a hosting environment, please refer to the `DEPLOYMENT_GUIDE.md`.
+
+**Automated Deployment with cPanel:**
+This project includes a `.cpanel.yml` file designed for use with cPanel's "Git Version Control" feature. If your cPanel hosting supports this, it can automate the deployment process whenever you push changes to your connected repository. See the `.cpanel.yml` file and the `DEPLOYMENT_GUIDE.md` for more details on configuring this.
+
 ## Documentation
 
 For more detailed information about specific parts of the project, please refer to the following documents:

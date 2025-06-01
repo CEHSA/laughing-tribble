@@ -1,0 +1,133 @@
+# .cpanel.yml
+# Deployment configuration for cPanel Git integration.
+# This script assumes that the Vue.js frontend has been pre-built
+# and the `frontend/dist` directory is committed to the repository.
+
+deployment:
+  tasks:
+    # Define common paths. Adjust 'your_cpanel_username' accordingly.
+    # DEPLOYPATH is the root of your public-facing web directory (usually public_html).
+    # REPOPATH is the directory where cPanel clones the repository.
+    #   cPanel usually clones to /home/your_cpanel_username/repositories/your_repo_name
+    #   Or, if you set up the repo directly in a public location (not recommended for this script structure),
+    #   this path might be the same as DEPLOYPATH or a subfolder.
+    #   For this example, we assume a separate repositories folder.
+    - export DEPLOYPATH=/home/your_cpanel_username/public_html
+    - export REPOPATH=/home/your_cpanel_username/repositories/architex_axis # Adjust 'architex_axis' if your repo name on cPanel is different
+
+    # --- Backend Deployment ---
+    # Define the target directory for the backend API.
+    # Example: yourdomain.com/api -> $DEPLOYPATH/api
+    # If your main domain hosts the frontend, and backend is in a subdirectory like 'api':
+    - export BACKEND_TARGET_PATH=${DEPLOYPATH}/api
+
+    # Create backend target directory if it doesn't exist
+    - echo "Creating backend target directory: ${BACKEND_TARGET_PATH}"
+    - mkdir -p ${BACKEND_TARGET_PATH}
+
+    # Copy backend files from the repository to the backend target path.
+    # This overwrites existing files in the backend target path.
+    # Exclude the .git directory and any other non-deployment files if necessary.
+    - echo "Deploying backend API files..."
+    # Using rsync for more control, e.g., excluding .git if it exists in the source subdirectories
+    # If backend directory in repo is clean (no .git subfolder), cp -R is also fine.
+    - /bin/rsync -av --delete --exclude='.git/' --exclude='.gitignore' --exclude='db_setup.php' ${REPOPATH}/backend/ ${BACKEND_TARGET_PATH}/
+    # The --delete flag makes the target directory look exactly like the source. Use with caution.
+    # db_setup.php is excluded as it's typically run once manually or via a different process.
+
+    # Add any backend-specific post-deployment commands here:
+    # - echo "Running backend post-deployment scripts (if any)..."
+    # - php ${BACKEND_TARGET_PATH}/your_migration_script.php
+    #
+    # IMPORTANT: Configuration Management for backend/config/database.php:
+    # The `database.php` file in the repository should ideally be a template or for development.
+    # For production, you should:
+    # 1. Manually create and configure `database.php` in ${BACKEND_TARGET_PATH}/config/ once on the server with live credentials.
+    # 2. Ensure your rsync or cp command does NOT overwrite this live config file.
+    #    One way is to rename the repo's config to database.php.template and copy it only if database.php doesn't exist.
+    #    Or, ensure `config/database.php` is in .gitignore for the main repo and managed on the server.
+    #    For this script, we assume `database.php` in the repo might be overwritten.
+    #    A better approach for sensitive configs:
+    #    - /bin/cp -n ${REPOPATH}/backend/config/database.php.prod-example ${BACKEND_TARGET_PATH}/config/database.php # Only if target doesn't exist
+    #    Ensure the actual production `database.php` is NOT in the repository or is git-ignored and managed securely.
+    #    The current rsync command will overwrite it if it's in the repo.
+
+
+    # --- Frontend Deployment ---
+    # Define the target directory for the frontend (usually the DEPLOYPATH itself for the main domain,
+    # or a subdirectory if the Vue app is not at the root of the domain).
+    # If frontend is at the root of public_html:
+    - export FRONTEND_TARGET_PATH=${DEPLOYPATH}
+
+    # Copy pre-built frontend assets from the repository's frontend/dist directory.
+    # This overwrites existing files in the frontend target path.
+    - echo "Deploying frontend application files..."
+    # Using rsync for --delete capability if desired.
+    - /bin/rsync -av --delete ${REPOPATH}/frontend/dist/ ${FRONTEND_TARGET_PATH}/
+    # If frontend is in a subfolder like /app, then:
+    # - export FRONTEND_TARGET_PATH=${DEPLOYPATH}/app
+    # - mkdir -p ${FRONTEND_TARGET_PATH}
+    # - /bin/rsync -av --delete ${REPOPATH}/frontend/dist/ ${FRONTEND_TARGET_PATH}/
+
+    # --- Final Steps ---
+    # Set appropriate permissions (example, usually cPanel defaults are fine)
+    # - echo "Setting permissions..."
+    # - find ${DEPLOYPATH} -type d -exec chmod 755 {} \;
+    # - find ${DEPLOYPATH} -type f -exec chmod 644 {} \;
+    # - chmod +x ${BACKEND_TARGET_PATH}/index.php # If necessary, usually not.
+
+    - echo "Deployment tasks finished."
+    # Add any other cleanup or notification steps here.
+
+# --- Important Notes for Users ---
+# 1. Username Placeholder: You MUST replace 'your_cpanel_username' in the DEPLOYPATH and REPOPATH
+#    variables with your actual cPanel username.
+#
+# 2. Repository Path (REPOPATH): The REPOPATH (/home/your_cpanel_username/repositories/architex_axis)
+#    is an example. Verify the actual path where cPanel's "Git Version Control" feature
+#    clones your repository. Adjust 'architex_axis' if your repository is named differently
+#    within cPanel's repositories directory.
+#
+# 3. Deployment Paths:
+#    - BACKEND_TARGET_PATH: Set to `${DEPLOYPATH}/api`. This means the backend will be accessible
+#      at `yourdomain.com/api`.
+#    - FRONTEND_TARGET_PATH: Set to `${DEPLOYPATH}`. This means the Vue.js app (from `frontend/dist`)
+#      will be served from the main domain root (`yourdomain.com`).
+#    If your backend or frontend are intended for different subdomains or significantly different
+#    path structures, these paths will need careful adjustment.
+#
+# 4. File Copying (`rsync` vs `cp`):
+#    - This script uses `rsync -av --delete` for copying. `--delete` makes the target directory
+#      an exact mirror of the source, deleting files in the target that are not in the source.
+#      This is good for clean deployments but be cautious.
+#    - `cp -R` is simpler but will not remove deleted files from the target.
+#
+# 5. Configuration Management (Critical for `database.php`):
+#    - The `backend/config/database.php` file contains sensitive database credentials.
+#    - **Problem:** Committing production credentials to Git is a security risk.
+#      Overwriting a manually configured production `database.php` with a development version
+#      from the repo during deployment will break the live application.
+#    - **Solutions (choose one or adapt):**
+#      a) **Manual Configuration:** Place the production `database.php` manually on the server
+#         in `${BACKEND_TARGET_PATH}/config/` and ensure it's *not* overwritten.
+#         The current rsync command for the backend *will* overwrite it if it's in the repo.
+#         You might need to explicitly exclude `config/database.php` from the rsync/cp command,
+#         or ensure the version in the repo is safe for production (not recommended for credentials).
+#      b) **Template File:** Commit `config/database.php.template` to the repo. Manually copy and
+#         rename it to `database.php` on the server, then fill in production details. The script
+#         could be modified to do this copy if `database.php` doesn't exist.
+#      c) **cPanel Environment Variables:** If your cPanel setup allows, use environment variables
+#         for database credentials and modify `database.php` to read from them. This is the most secure.
+#    - The current script *excludes* `db_setup.php` from being copied by rsync, which is good.
+#
+# 6. Overwriting Files: Be aware that these commands will overwrite existing files in the
+#    deployment paths (`BACKEND_TARGET_PATH`, `FRONTEND_TARGET_PATH`). This is generally intended
+#    for a fresh deployment of the committed code.
+#
+# 7. Idempotency: The script uses `mkdir -p` which is idempotent. `rsync --delete` also aims for an
+#    idempotent state (target matches source).
+#
+# 8. Pre-built Frontend: This script assumes `frontend/dist/` is committed to the repository.
+#    If not, you would need a build step on the cPanel server if Node.js/npm is available there,
+#    or ensure you build locally and commit `dist/` before pushing to the branch cPanel deploys.
+```

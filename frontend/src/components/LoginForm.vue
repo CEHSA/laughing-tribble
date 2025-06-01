@@ -42,10 +42,10 @@
 </template>
 
 <script setup>
-import { ref, defineEmits } from 'vue'; // Import defineEmits
+import { ref } from 'vue'; // Removed defineEmits
 import authService from '../services/authService';
 
-// Declare emits
+// Declare emits - defineEmits is a compiler macro, no import needed
 const emit = defineEmits(['login-success']);
 
 const form = ref({

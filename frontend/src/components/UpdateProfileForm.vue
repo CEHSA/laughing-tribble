@@ -83,9 +83,10 @@
 </template>
 
 <script setup>
-import { ref, watch, defineProps, defineEmits, onMounted } from 'vue';
+import { ref, watch, onMounted } from 'vue'; // Removed defineProps, defineEmits
 import authService from '../services/authService';
 
+// defineProps and defineEmits are compiler macros, no import needed
 const props = defineProps({
   currentProfile: {
     type: Object,

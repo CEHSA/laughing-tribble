@@ -38,6 +38,8 @@ To build the application for production deployment:
     ```
     This command compiles and minifies the Vue.js application, typically outputting the static assets to a `dist/` directory within the `frontend` folder. These are the files you would deploy to a web server.
 
+    **Note:** After running `npm run build`, the generated `dist/` directory should be committed to the repository. This is because our cPanel deployment process (as outlined in `DEPLOYMENT_GUIDE.md`) relies on these pre-built assets being available in the repository for upload via FTP/File Manager or for direct deployment if cPanel's Git integration is used to pull the built files.
+
 ## Key Components & Services
 
 *   **`src/App.vue`**: The main application shell that orchestrates different views and components.
