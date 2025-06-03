@@ -1,0 +1,11 @@
+/* Placeholder for CSS rules */
+body {
+    font-family: 'Roboto', sans-serif;
+}
+.sidebar {
+    width: 250px;
+    transition: width 0.3s;
+}
+.sidebar.collapsed {
+    width: 80px;
+}
